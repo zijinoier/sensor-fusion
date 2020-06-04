@@ -47,6 +47,11 @@ add_executable(sensor_fusion_all
         src/mains/all_main.cpp
 )
 
+add_executable(sensor_fusion_xty
+        ${SRC_EXCEPT_MAIN}
+        src/mains/xty_main.cpp
+)
+
 add_library(Catch INTERFACE)
 add_executable( sensor_fusion_test
         test/sensors_test.cpp ${sensors_SRC}
