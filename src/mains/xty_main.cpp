@@ -1,7 +1,10 @@
+#include <math.h>
+
 #include <fstream>  //ifstream
 #include <fusion.hpp>
 #include <iostream>
 #include <vector>
+#define PI 3.14159265
 using namespace ser94mor::sensor_fusion;
 struct lidar_target {
   double dist, angle;  // angle in degree
@@ -51,4 +54,44 @@ int main() {
   }
   std::cout << "Read " << radar_targets.size() << " radar targets\n";
   infile.close();
+
+  // fusion
+  EKF_CV_LIDAR_RADAR_Fusion fusion{cv_mtx, lidar_mtx, radar_mtx};
+
+  for (int time_stamp = 0; time_stamp < lidar_number; time_stamp++) {
+    Radar::MeasurementVector r_meas_vect;
+    // r_meas_vect << radar_targets[time_stamp].dist *
+    //                    cos(radar_targets[time_stamp].angle * PI / 180.0),
+    //     radar_targets[time_stamp].dist *
+    //         sin(radar_targets[time_stamp].angle * PI / 180.0),
+    //     0;
+    r_meas_vect << radar_targets[time_stamp].dist,
+        (radar_targets[time_stamp].angle * PI / 180.0), 0;
+    Radar::Measurement r_measurement{time_stamp, r_meas_vect};
+    auto belief{fusion.ProcessMeasurement(r_measurement)};
+    const auto& sv{belief.mu()};
+    CV::ROStateVectorView state_vector_view{sv};
+    // std::cout << "time: " << time_stamp << " " <<
+    // radar_targets[time_stamp].dist
+    //           << " " << radar_targets[time_stamp].angle << " "
+    //           << state_vector_view.px() << " " << state_vector_view.py()
+    //           << std::endl;
+
+    Lidar::MeasurementVector l_meas_vect;
+    l_meas_vect << lidar_targets[time_stamp].dist *
+                       cos(lidar_targets[time_stamp].angle * PI / 180.0),
+        lidar_targets[time_stamp].dist *
+            sin(lidar_targets[time_stamp].angle * PI / 180.0);
+    Lidar::Measurement l_measurement{time_stamp, l_meas_vect};
+    auto l_belief{fusion.ProcessMeasurement(l_measurement)};
+    const auto& l_sv{l_belief.mu()};
+    CV::ROStateVectorView l_state_vector_view{l_sv};
+    // std::cout << "time: " << time_stamp << " " <<
+    // lidar_targets[time_stamp].dist
+    //           << " " << lidar_targets[time_stamp].angle << " "
+    //           << l_state_vector_view.px() << " " << l_state_vector_view.py()
+    //           << std::endl;
+    std::cout << time_stamp << " " << l_state_vector_view.px() << " "
+              << l_state_vector_view.py() << std::endl;
+  }
 }
